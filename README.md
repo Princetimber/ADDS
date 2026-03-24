@@ -50,13 +50,15 @@ The password is never written to any log file.
 
 ## Usage Examples
 
-### Forest with interactive password prompt
+### `Invoke-ADDSForest`
+
+#### Forest with interactive password prompt
 
 ```powershell
 Invoke-ADDSForest -DomainName 'contoso.com' -InstallDNS
 ```
 
-### Forest with custom paths and explicit password
+#### Forest with custom paths and explicit password
 
 ```powershell
 $dsrmPass = Read-Host 'DSRM Password' -AsSecureString
@@ -69,7 +71,7 @@ Invoke-ADDSForest -DomainName 'contoso.com' `
     -InstallDNS
 ```
 
-### Forest using Azure Key Vault for the DSRM password
+#### Forest using Azure Key Vault for the DSRM password
 
 ```powershell
 Invoke-ADDSForest -DomainName 'contoso.com' `
@@ -79,7 +81,7 @@ Invoke-ADDSForest -DomainName 'contoso.com' `
     -InstallDNS
 ```
 
-### Forest using a pre-registered SecretManagement vault
+#### Forest using a pre-registered SecretManagement vault
 
 ```powershell
 # Register the vault once
@@ -91,30 +93,14 @@ Invoke-ADDSForest -DomainName 'contoso.com' `
     -InstallDNS
 ```
 
-### Capture forest configuration for auditing
+#### Capture forest configuration for auditing
 
 ```powershell
 $config = Invoke-ADDSForest -DomainName 'contoso.com' -InstallDNS -PassThru
 $config | Export-Csv -Path 'forest-config.csv' -NoTypeInformation
 ```
 
-### Promote an additional DC in a specific site
-
-```powershell
-$cred     = Get-Credential
-$dsrmPass = Read-Host 'DSRM Password' -AsSecureString
-
-Invoke-ADDomainController -DomainName 'contoso.com' `
-    -SiteName                      'London-Site' `
-    -SafeModeAdministratorPassword $dsrmPass `
-    -DomainAdminCredential         $cred `
-    -DatabasePath 'D:\NTDS' `
-    -LogPath      'E:\ADLogs' `
-    -SysvolPath   'D:\SYSVOL' `
-    -InstallDNS
-```
-
-### Non-interactive automation
+#### Non-interactive forest automation
 
 ```powershell
 try {
@@ -130,6 +116,145 @@ catch {
 }
 ```
 
+---
+
+### `Invoke-ADDomainController`
+
+Promotes an existing Windows Server to an **additional domain controller** in an already-running AD DS domain. The domain must exist and be reachable before running this command.
+
+#### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `DomainName` | `string` | Yes | FQDN of the existing domain to join (e.g. `contoso.com`) |
+| `SiteName` | `string` | No | AD site to register the DC in. Default: `Default-First-Site-Name` |
+| `SafeModeAdministratorPassword` | `securestring` | No | DSRM password. Prompted interactively if omitted |
+| `DomainAdminCredential` | `pscredential` | No | Domain admin account. Prompted interactively if omitted |
+| `DatabasePath` | `string` | No | Path for `NTDS.dit`. Default: `$env:SYSTEMDRIVE\Windows` |
+| `LogPath` | `string` | No | Path for AD transaction logs. Default: `$env:SYSTEMDRIVE\Windows\NTDS` |
+| `SysvolPath` | `string` | No | Path for SYSVOL. Default: `$env:SYSTEMDRIVE\Windows` |
+| `ResourceGroupName` | `string` | No | Azure Resource Group containing the Key Vault |
+| `KeyVaultName` | `string` | No | Azure Key Vault name holding the DSRM secret |
+| `SecretName` | `string` | No | Secret name in Key Vault or SecretManagement vault |
+| `VaultName` | `string` | No | Pre-registered SecretManagement vault name (no Azure connection) |
+| `InstallDNS` | `switch` | No | Install the DNS Server role as part of DC promotion |
+| `Force` | `switch` | No | Suppress all confirmation prompts (use with caution) |
+| `PassThru` | `switch` | No | Return a configuration object after completion |
+| `-WhatIf` | `switch` | No | Preview the operation without executing |
+| `-Confirm` | `switch` | No | Prompt before each state-changing action |
+
+**`-PassThru` output object properties:** `DomainName`, `SiteName`, `DatabasePath`, `LogPath`, `SysvolPath`, `InstallDNS`, `Status`, `Timestamp`
+
+#### Test before you run
+
+```powershell
+# Always validate parameters and prerequisites first — no changes are made
+Invoke-ADDomainController -DomainName 'contoso.com' -WhatIf
+```
+
+#### Basic promotion with interactive prompts
+
+```powershell
+# Prompts for DSRM password and domain admin credentials interactively
+Invoke-ADDomainController -DomainName 'contoso.com' -InstallDNS
+```
+
+The function will:
+- Prompt for the Safe Mode Administrator (DSRM) password
+- Prompt for domain administrator credentials
+- Prompt for confirmation before proceeding
+- Register the DC in `Default-First-Site-Name`
+- Install the DNS Server role
+- Use default paths for the database, logs, and SYSVOL
+
+#### Promote to a specific site with dedicated storage
+
+```powershell
+$cred     = Get-Credential -Message 'Enter domain admin credentials'
+$dsrmPass = Read-Host 'DSRM Password' -AsSecureString
+
+Invoke-ADDomainController -DomainName 'corp.example.com' `
+    -SiteName                      'London-Site' `
+    -SafeModeAdministratorPassword $dsrmPass `
+    -DomainAdminCredential         $cred `
+    -DatabasePath                  'D:\NTDS' `
+    -LogPath                       'E:\ADLogs' `
+    -SysvolPath                    'D:\SYSVOL' `
+    -InstallDNS `
+    -Confirm:$false
+```
+
+Explicit credentials and password are supplied — no interactive prompts appear.
+
+#### Retrieve DSRM password from Azure Key Vault
+
+```powershell
+Invoke-ADDomainController -DomainName 'contoso.com' `
+    -ResourceGroupName 'MyRG' `
+    -KeyVaultName      'MyKV' `
+    -SecretName        'DSRMPassword' `
+    -InstallDNS
+```
+
+Connects to Azure (handled automatically), retrieves the secret, then disconnects. Domain admin credentials are still prompted interactively.
+
+#### Retrieve DSRM password from a pre-registered SecretManagement vault
+
+```powershell
+# Register the vault once (no Azure connection required)
+Register-SecretVault -Name 'LocalStore' -ModuleName 'Microsoft.PowerShell.SecretStore'
+
+Invoke-ADDomainController -DomainName 'contoso.com' `
+    -VaultName  'LocalStore' `
+    -SecretName 'DSRMPassword' `
+    -InstallDNS
+```
+
+#### Capture DC configuration for auditing
+
+```powershell
+$config = Invoke-ADDomainController -DomainName 'contoso.com' `
+    -SiteName     'HQ-Site' `
+    -DatabasePath 'D:\NTDS' `
+    -LogPath      'E:\ADLogs' `
+    -SysvolPath   'D:\SYSVOL' `
+    -InstallDNS `
+    -PassThru
+
+$config | Export-Csv -Path 'dc-config.csv' -NoTypeInformation
+```
+
+#### Non-interactive automation with error handling
+
+```powershell
+try {
+    $params = @{
+        DomainName                    = 'automation.corp.com'
+        SiteName                      = 'DataCenter-Site'
+        SafeModeAdministratorPassword = $vaultPassword   # SecureString from vault
+        DomainAdminCredential         = $adminCred       # PSCredential from vault
+        DatabasePath                  = 'D:\NTDS'
+        LogPath                       = 'E:\Logs'
+        SysvolPath                    = 'D:\SYSVOL'
+        InstallDNS                    = $true
+        Force                         = $true
+        PassThru                      = $true
+    }
+
+    $result = Invoke-ADDomainController @params
+
+    if ($result.Status -eq 'Completed') {
+        Write-Output "DC promotion completed: $($result.DomainName) / $($result.SiteName) at $($result.Timestamp)"
+    }
+}
+catch {
+    Write-Error "DC promotion failed: $_"
+    # Send alert to your monitoring system here
+}
+```
+
+Uses parameter splatting for readability. Passwords and credentials come from a vault — nothing is hardcoded. `-Force` skips all confirmation prompts for fully unattended execution.
+
 ## Module Default Paths
 
 These defaults are set when the module loads and can be overridden by supplying the parameter explicitly:
@@ -139,10 +264,10 @@ These defaults are set when the module loads and can be overridden by supplying 
 | `Invoke-ADDSForest -DatabasePath` | `$env:SYSTEMDRIVE\Windows` |
 | `Invoke-ADDSForest -LogPath` | `$env:SYSTEMDRIVE\Windows\NTDS\` |
 | `Invoke-ADDSForest -SYSVOLPath` | `$env:SYSTEMDRIVE\Windows` |
-| `Invoke-ADDSDomainController -SiteName` | `Default-First-Site-Name` |
-| `Invoke-ADDSDomainController -DatabasePath` | `$env:SYSTEMDRIVE\Windows` |
-| `Invoke-ADDSDomainController -LogPath` | `$env:SYSTEMDRIVE\Windows\NTDS\` |
-| `Invoke-ADDSDomainController -SYSVOLPath` | `$env:SYSTEMDRIVE\Windows` |
+| `Invoke-ADDomainController -SiteName` | `Default-First-Site-Name` |
+| `Invoke-ADDomainController -DatabasePath` | `$env:SYSTEMDRIVE\Windows` |
+| `Invoke-ADDomainController -LogPath` | `$env:SYSTEMDRIVE\Windows\NTDS\` |
+| `Invoke-ADDomainController -SYSVOLPath` | `$env:SYSTEMDRIVE\Windows` |
 
 ## Architecture
 
