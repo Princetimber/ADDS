@@ -1,15 +1,20 @@
-# Changelog for {{MODULE_NAME}}
+# Changelog for Invoke-ADDS
 
 The format is based on and uses the types of changes according to [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-03-24
+
+### Changed
+
+- Renamed `Invoke-ADDSDomainController.ps1` to `Invoke-ADDomainController.ps1` to match the function name it contains.
+
+## [0.0.1] - 2026-03-24
+
 ### Added
 
-- Export-Greeting public function demonstrating correct ShouldProcess usage for
-  state-changing operations (file writes with -WhatIf, -Confirm, -Force, -Append,
-  -PassThru support).
 - Clear-LogFile private function — clears the active log file with optional
   timestamped archive backup before clearing. ConfirmImpact=High always prompts
   unless -Force or -Confirm:$false is passed.
@@ -41,12 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Wrapper functions (Test-PathWrapper, Add-ContentWrapper, Get-ItemWrapper,
     New-ItemDirectoryWrapper) isolate I/O calls for Pester mockability.
   - Mutex is disposed on PowerShell exit via Register-EngineEvent.
-- Removed ShouldProcess from Get-Greeting — read-only functions should not use
-  SupportsShouldProcess. Removed Force parameter accordingly.
-- Replaced string-throw error handling in Get-Greeting with proper ErrorRecord
-  construction via ThrowTerminatingError.
-- Replaced AllowEmptyString with ValidateNotNullOrEmpty and ValidatePattern on
-  Format-GreetingMessage Name parameter.
 - Pinned dependency versions in RequiredModules.psd1 using version ranges instead
   of 'latest'.
 - Consolidated AI agent documentation: removed .github/instructions/ directory
@@ -59,3 +58,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requirement in #Requires).
 - .github/instructions/ directory and tests/tests.instructions.md.
 - Classes/ directory reference from documentation (directory did not exist).
+
+### Fixed
+
+- All source `.ps1` files re-encoded to UTF-8-BOM to resolve
+  `PSUseBOMForUnicodeEncodedFile` ScriptAnalyzer warnings in QA tests.
+- Bug in `New-ADDomainController`: parameter body referenced `$DatabasePath`
+  and `$SysvolPath` instead of the declared `$DataBasePath` and `$SYSVOLPath`,
+  causing `New-EnvPath` to throw on empty input and silently skipping those
+  paths in preflight validation.
+- Pester unit tests for `Add-RegisteredSecretVault`, `Connect-ToAzure`,
+  `Disconnect-FromAzure`, `Install-ADModule`, `Invoke-ResourceModule`, and
+  `Remove-RegisteredSecretVault`: replaced `$callCount++` pattern (which
+  creates a local variable and never mutates the outer value) with a
+  `$script:` scoped boolean flag shared across mock scriptblocks.
+- `Write-ErrorLog` tests: replaced `$script:BuildErrorRecord` helper (invisible
+  inside `InModuleScope`) with inline `ErrorRecord` construction.
+- Module manifest `FunctionsToExport`, `Tags`, and `ReleaseNotes` populated.
+- Added `Mock Write-ToLog` to `BeforeEach` in six test files to prevent real
+  log output during unit test runs.
+
+### Published
+
+- Initial release to PowerShell Gallery as `Invoke-ADDS` v0.0.1.

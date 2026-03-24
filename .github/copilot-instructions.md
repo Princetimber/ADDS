@@ -2,7 +2,7 @@
 
 ## Overview
 
-**{{MODULE_NAME}}** — a PowerShell module built with [Sampler](https://github.com/gaelcolas/Sampler).
+**Invoke-ADDS** — a PowerShell module built with [Sampler](https://github.com/gaelcolas/Sampler).
 Target: PowerShell 7.0+. See `CLAUDE.md` for full project context and coding conventions.
 
 ## Environment

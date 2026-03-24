@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 # Convenience wrapper around Write-ToLog for ErrorRecord objects.
 # Logs the main message at ERROR level; exception type, category, location, and inner exception at DEBUG.

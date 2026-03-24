@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 # Sets the module-scoped log file path ($script:LogFilePath and $Global:LogFile).
 # Requires a rooted absolute path. -Force creates the directory if it does not exist.
