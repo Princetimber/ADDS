@@ -3,7 +3,12 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "command": "pwsh -Command \"$files = git diff --name-only --diff-filter=AM -- '*.ps1' '*.psm1'; if ($files) { Invoke-ScriptAnalyzer -Path $files -Severity Warning,Error }\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -Command \"$files = git diff --name-only --diff-filter=AM -- '*.ps1' '*.psm1'; if ($files) { Invoke-ScriptAnalyzer -Path $files -Severity Warning,Error }\""
+          }
+        ]
       }
     ]
   }
