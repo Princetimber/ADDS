@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 
 BeforeAll {
-    $script:dscModuleName = 'TemplateModule'
+    $script:dscModuleName = 'Invoke-ADDS'
 
     Import-Module -Name $script:dscModuleName
 }

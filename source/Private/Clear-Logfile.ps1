@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 # Clears the active log file. ConfirmImpact=High — always prompts unless -Force or -Confirm:$false.
 # -Archive creates a timestamped .bak copy before clearing.

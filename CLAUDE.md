@@ -1,22 +1,30 @@
 # CLAUDE.md
 
-Project context for Claude Code and AI agents.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-PowerShell module template built with the **Sampler** framework. This template serves as a starting point for creating enterprise-grade PowerShell modules with:
+**Invoke-ADDS** is a production PowerShell module (PowerShell 7.0+) for automating Active Directory Domain Services installation in enterprise environments. Built with the **Sampler** framework.
 
-- **Standardized structure** following Sampler conventions
-- **Comprehensive testing** with Pester v5+
-- **CI/CD integration** for GitHub Actions and Azure Pipelines
-- **Code quality enforcement** via ScriptAnalyzer and code coverage
-- **Complete documentation** with instruction files for AI agents
+Two public functions are exported:
 
-After cloning, run `Initialize-Template.ps1` to customize the template with your module name, author, and description.
+| Function | Purpose |
+|---|---|
+| `Invoke-ADDSForest` | Creates a new AD DS forest (first DC, new domain) |
+| `Invoke-ADDomainController` | Promotes a server to an additional DC in an existing domain |
+
+Both are state-changing, irreversible, and cause a system reboot. Always test with `-WhatIf` first.
 
 ## PowerShell Development Standards
 
 - Always run `Invoke-ScriptAnalyzer` after modifying any `.ps1` or `.psm1` files and fix all warnings before committing.
+- After writing or editing any source file, re-encode with UTF-8-BOM or the QA `PSUseBOMForUnicodeEncodedFile` check fails:
+  ```powershell
+  Get-ChildItem source/ -Recurse -Include '*.ps1','*.psm1','*.psd1' | ForEach-Object {
+      $c = Get-Content $_.FullName -Raw
+      [System.IO.File]::WriteAllText($_.FullName, $c, (New-Object System.Text.UTF8Encoding $true))
+  }
+  ```
 - Use `Write-ToLog` (not `Write-Log`) as the standard logging function across all modules.
 - All tests must be cross-platform compatible (macOS and Windows). Avoid Windows-only cmdlets without mocking, hardcoded Windows paths, or reliance on Windows-specific environment variables.
 
@@ -31,26 +39,79 @@ After cloning, run `Initialize-Template.ps1` to customize the template with your
 - Always run the full test suite (`Invoke-Pester`) after any code changes, not just the tests for modified files.
 - When tests fail, fix and re-run iteratively until all pass before committing.
 - Mock Windows-only cmdlets (e.g., `Get-Service`, `Get-EventLog`) when writing tests that need to run cross-platform.
+- Always add `Mock Write-ToLog` in a `BeforeEach` block for any function that calls `Write-ToLog`, to suppress log output in tests.
 
-## Module Structure (Sampler Layout)
+### Pester mock scoping inside InModuleScope
 
+`$callCount++` inside a mock scriptblock creates a **local copy** and never mutates the outer variable. Use a `$script:` scoped boolean flag instead — `$script:` inside `InModuleScope` refers to the module scope, shared across all mock scriptblocks:
+
+```powershell
+# WRONG — $callCount never increments
+$callCount = 0
+Mock Get-StateWrapper { $callCount++; if ($callCount -eq 1) { $null } else { $result } }
+
+# CORRECT
+$script:_actionDone = $false
+Mock Get-StateWrapper { if ($script:_actionDone) { $result } else { $null } }
+Mock Do-ActionWrapper { $script:_actionDone = $true }
 ```
-{{MODULE_NAME}}/
-├── source/
-│   ├── {{MODULE_NAME}}.psd1      # Module manifest
-│   ├── {{MODULE_NAME}}.psm1      # Dot-sources Public/ and Private/
-│   ├── Public/                   # Exported functions (one per file)
-│   ├── Private/                  # Internal helper functions (one per file)
-│   └── en-US/                    # Help files
-├── tests/
-│   ├── QA/                       # ScriptAnalyzer, changelog, help quality
-│   │   └── module.tests.ps1
-│   └── Unit/
-│       ├── Public/               # Tests mirror source/Public/
-│       └── Private/              # Tests mirror source/Private/
-├── build.ps1
-├── build.yaml
-└── RequiredModules.psd1
+
+Helper scriptblocks defined in `BeforeAll` (e.g. `$script:BuildHelper = { ... }`) are also invisible inside `InModuleScope` for the same reason — inline the construction instead.
+
+## Architecture
+
+### Private Function Groups
+
+**Logging system** (7 functions — always available after module load):
+
+| Function | Role |
+|---|---|
+| `Write-ToLog` | Core entry point. Thread-safe (named mutex), timestamped, INFO/DEBUG/WARN/ERROR/SUCCESS levels, ANSI color, auto-redacts passwords/tokens/keys in key=value, JSON, XML formats |
+| `Set-LogFilePath` | Sets `$script:LogFile` (and `$Global:LogFile`). `-Force` creates the directory |
+| `Get-LogFilePath` | Returns current log path for inspection |
+| `Get-LogFileSize` | Returns size in bytes; `0` if file doesn't exist |
+| `Invoke-LogRotation` | Shifts numbered backups (`.1`–`.5`); called inside the mutex by `Write-ToLog`, not for direct use |
+| `Clear-LogFile` | Clears log. `ConfirmImpact=High`. `-Archive` saves a `.bak` first |
+| `Write-ErrorLog` | Wraps `[ErrorRecord]`: logs message at ERROR, exception type/category/location at DEBUG. `-IncludeStackTrace` appends PS stack |
+
+All file I/O in private functions goes through thin wrapper functions (`Add-ContentWrapper`, `Test-PathWrapper`, `Get-WindowsFeatureWrapper`, etc.) so Pester can mock filesystem and OS calls without touching the real system.
+
+**AD orchestration** (private):
+
+| Function | Role |
+|---|---|
+| `Test-PreflightCheck` | Single validation source (DRY). Checks: Windows Server ProductType=3, admin elevation, Windows features, required paths, disk space. Throws on first failure. |
+| `New-ADDSForest` | Orchestrates forest creation: preflight → module install → feature install → path validation → password resolution → `Install-ADDSForest` |
+| `New-ADDomainController` | Orchestrates DC promotion: preflight → module install → feature install → path creation → password resolution → credential prompt → `Install-ADDSDomainController` |
+| `Install-ADModule` | Installs AD-Domain-Services Windows feature |
+| `Invoke-ResourceModule` | Installs required PowerShell modules |
+| `Get-SafeModePassword` | Resolves DSRM password (see order below) |
+| `Connect-ToAzure` / `Disconnect-FromAzure` | Azure session management for Key Vault retrieval |
+| `Get-Vault` / `Add-RegisteredSecretVault` / `Remove-RegisteredSecretVault` | SecretManagement vault helpers |
+| `Test-IfPathExistsOrNot` | Path validation helper |
+| `New-EnvPath` | Creates required directories |
+
+### DSRM Password Resolution Order
+
+Both public functions resolve the Safe Mode password in this order (first match wins):
+
+1. `-SafeModeAdministratorPassword` supplied directly as `[securestring]`
+2. Azure Key Vault: `-ResourceGroupName` + `-KeyVaultName` + `-SecretName` (triggers `Connect-ToAzure`)
+3. Pre-registered SecretManagement vault: `-VaultName` + `-SecretName` (no Azure connection)
+4. Interactive `Read-Host` prompt via `Get-SafeModePassword`
+
+### Module Default Paths (set in `Invoke-ADDS.psm1`)
+
+```powershell
+$PSDefaultParameterValues = @{
+    'Invoke-ADDSForest:DatabasePath'           = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDSForest:LogPath'                = "$env:SYSTEMDRIVE\Windows\NTDS\"
+    'Invoke-ADDSForest:SYSVOLPATH'             = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDSDomainController:SiteName'     = 'Default-First-Site-Name'
+    'Invoke-ADDSDomainController:DatabasePath' = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDSDomainController:LogPath'      = "$env:SYSTEMDRIVE\Windows\NTDS\"
+    'Invoke-ADDSDomainController:SYSVOLPath'   = "$env:SYSTEMDRIVE\Windows"
+}
 ```
 
 ## Common Commands
@@ -62,16 +123,25 @@ After cloning, run `Initialize-Template.ps1` to customize the template with your
 # Subsequent builds
 ./build.ps1 -tasks build
 
-# Run tests
-./build.ps1 -tasks test
-# or directly:
+# Run full test suite
 Invoke-Pester
+
+# Run a single test file
+Invoke-Pester tests/Unit/Private/Write-ToLog.tests.ps1
+
+# Run tests with coverage
+Invoke-Pester -CodeCoverage source/**/*.ps1
 
 # Lint
 Invoke-ScriptAnalyzer -Path source/ -Recurse
 
 # Package
 ./build.ps1 -tasks pack
+
+# Publish (Sampler expects $GalleryApiToken, not $PSGALLERY_API_KEY)
+. ./secrets.local.ps1
+$env:GalleryApiToken = $env:PSGALLERY_API_KEY
+./build.ps1 -tasks publish_psgallery   # or publish_github
 ```
 
 ## Coding Conventions

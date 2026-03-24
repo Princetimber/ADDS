@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 # Returns the current log file size in bytes. Returns 0 if the file does not exist.
 function Get-LogFileSize {

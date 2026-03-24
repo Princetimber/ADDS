@@ -1,0 +1,211 @@
+TOPIC
+    about_Invoke-ADDS
+
+SHORT DESCRIPTION
+    Automates Active Directory Domain Services (AD DS) installation and
+    promotion on Windows Server in enterprise environments.
+
+LONG DESCRIPTION
+    Invoke-ADDS is a production-grade PowerShell 7.0+ module that
+    orchestrates the full lifecycle of AD DS deployment:
+
+      - Creating a new AD DS forest (first domain controller and domain)
+      - Promoting additional domain controllers into an existing domain
+
+    Both operations are irreversible and trigger a system reboot. Always
+    test with -WhatIf before executing in production.
+
+  ARCHITECTURE
+
+    The module exposes two public functions backed by a private
+    orchestration layer:
+
+      Public
+      ------
+      Invoke-ADDSForest          Creates a new AD DS forest.
+      Invoke-ADDomainController  Promotes a server to a domain controller.
+
+      Private orchestration
+      ---------------------
+      New-ADDSForest             Runs preflight, installs features/modules,
+                                 resolves the DSRM password, builds paths,
+                                 and calls Install-ADDSForest.
+      New-ADDomainController     Same flow for DC promotion; also handles
+                                 domain admin credential collection and calls
+                                 Install-ADDSDomainController.
+      Test-PreflightCheck        Single validation source (DRY). Checks
+                                 Windows Server platform (ProductType=3),
+                                 admin elevation, required Windows features,
+                                 required paths, and minimum disk space.
+      Install-ADModule           Installs the AD-Domain-Services Windows
+                                 feature (idempotent).
+      Invoke-ResourceModule      Installs required PowerShell modules from
+                                 PSGallery (idempotent).
+      Get-SafeModePassword       Resolves the DSRM password (see below).
+      Connect-ToAzure            Authenticates to Azure via device-code
+                                 login with configurable timeout.
+      Disconnect-FromAzure       Idempotent Azure session teardown.
+      Get-Vault                  Retrieves Azure Key Vault metadata.
+      Add-RegisteredSecretVault  Registers an Azure Key Vault as a
+                                 SecretManagement vault (idempotent).
+      Remove-RegisteredSecretVault  Unregisters a SecretManagement vault
+                                    (idempotent).
+      Write-ToLog                Thread-safe, auto-rotating logger with
+                                 sensitive-data redaction.
+
+  DSRM PASSWORD RESOLUTION
+
+    Both public functions resolve the Directory Services Restore Mode
+    (DSRM) password using the following priority order:
+
+      1. -SafeModeAdministratorPassword  (SecureString supplied directly)
+      2. Azure Key Vault                 (-ResourceGroupName + -KeyVaultName
+                                          + -SecretName)
+      3. Pre-registered SecretManagement vault  (-VaultName + -SecretName)
+      4. Interactive prompt              (Read-Host -AsSecureString)
+
+    The DSRM password is never written to any log file.
+
+  LOGGING
+
+    All operations are logged via Write-ToLog (not Write-Log). The logger
+    supports INFO, DEBUG, WARN, ERROR, and SUCCESS levels, writes entries
+    under a named mutex for thread safety, auto-rotates at 10 MB (up to
+    five numbered backups), and redacts passwords, tokens, keys, and
+    secrets before any file write.
+
+    Set the log file path before running:
+
+        Set-LogFilePath -Path 'C:\Logs\Invoke-ADDS.log' -Force
+
+  MODULE DEFAULT PATHS
+
+    The following PSDefaultParameterValues are set when the module loads:
+
+        Invoke-ADDSForest:DatabasePath          C:\Windows
+        Invoke-ADDSForest:LogPath               C:\Windows\NTDS\
+        Invoke-ADDSForest:SYSVOLPath            C:\Windows
+        Invoke-ADDSDomainController:SiteName    Default-First-Site-Name
+        Invoke-ADDSDomainController:DatabasePath  C:\Windows
+        Invoke-ADDSDomainController:LogPath     C:\Windows\NTDS\
+        Invoke-ADDSDomainController:SYSVOLPath  C:\Windows
+
+    Override any default by supplying the parameter explicitly.
+
+COMMANDS
+    Invoke-ADDSForest
+        Creates a new Active Directory forest. Supports -WhatIf, -Confirm,
+        -Force, and -PassThru. Requires Windows Server with the
+        AD-Domain-Services feature available.
+
+    Invoke-ADDomainController
+        Promotes a server to an additional domain controller in an existing
+        domain. Supports -WhatIf, -Confirm, -Force, and -PassThru.
+
+EXAMPLES
+    EXAMPLE 1 — Test forest creation (safe, no changes)
+
+        Invoke-ADDSForest -DomainName 'contoso.com' -WhatIf
+
+    EXAMPLE 2 — Create a forest with DNS installed
+
+        Invoke-ADDSForest -DomainName 'contoso.com' -InstallDNS -Confirm:$false
+
+    EXAMPLE 3 — Create a forest using an Azure Key Vault for the DSRM password
+
+        Invoke-ADDSForest -DomainName 'contoso.com' `
+            -ResourceGroupName 'MyRG' `
+            -KeyVaultName      'MyKV' `
+            -SecretName        'DSRMPassword' `
+            -InstallDNS
+
+    EXAMPLE 4 — Create a forest using a pre-registered SecretManagement vault
+
+        Register-SecretVault -Name 'LocalStore' `
+            -ModuleName 'Microsoft.PowerShell.SecretStore'
+
+        Invoke-ADDSForest -DomainName 'contoso.com' `
+            -VaultName  'LocalStore' `
+            -SecretName 'DSRMPassword' `
+            -InstallDNS
+
+    EXAMPLE 5 — Capture forest configuration for auditing
+
+        $config = Invoke-ADDSForest -DomainName 'contoso.com' `
+                      -DatabasePath 'D:\NTDS' `
+                      -LogPath      'E:\ADLogs' `
+                      -SysvolPath   'D:\SYSVOL' `
+                      -InstallDNS   `
+                      -PassThru
+
+        $config | Export-Csv -Path 'forest-config.csv' -NoTypeInformation
+
+    EXAMPLE 6 — Test DC promotion (safe, no changes)
+
+        Invoke-ADDomainController -DomainName 'contoso.com' -WhatIf
+
+    EXAMPLE 7 — Promote to a DC in a specific site with dedicated storage
+
+        $cred     = Get-Credential
+        $dsrmPass = Read-Host 'DSRM Password' -AsSecureString
+
+        Invoke-ADDomainController -DomainName 'contoso.com' `
+            -SiteName                      'London-Site' `
+            -SafeModeAdministratorPassword $dsrmPass `
+            -DomainAdminCredential         $cred `
+            -DatabasePath 'D:\NTDS' `
+            -LogPath      'E:\ADLogs' `
+            -SysvolPath   'D:\SYSVOL' `
+            -InstallDNS
+
+    EXAMPLE 8 — Non-interactive automation with error handling
+
+        try {
+            $result = Invoke-ADDSForest -DomainName 'corp.contoso.com' `
+                          -VaultName  'CorpVault' `
+                          -SecretName 'DSRMPassword' `
+                          -InstallDNS `
+                          -Force `
+                          -PassThru
+
+            Write-Output "Forest created: $($result.DomainName) at $($result.Timestamp)"
+        }
+        catch {
+            Write-Error "Forest creation failed: $_"
+        }
+
+NOTES
+    Requirements
+    ------------
+    - PowerShell 7.0 or later
+    - Windows Server (ProductType = 3) — enforced by Test-PreflightCheck
+    - Administrative privileges — enforced by Test-PreflightCheck
+    - AD-Domain-Services Windows feature available on the server
+    - Network access to PSGallery for module installation
+    - Az.KeyVault and Microsoft.PowerShell.SecretManagement modules are
+      installed automatically when Azure Key Vault retrieval is used
+    - A pre-registered SecretManagement vault when using -VaultName
+
+    Safety
+    ------
+    - Both public functions support -WhatIf. Always run -WhatIf first.
+    - Both operations are permanent and trigger a system reboot.
+    - DSRM passwords and domain admin credentials are never logged.
+    - Use -Force only in validated automation pipelines.
+
+    Author:  Olamide Olaleye
+    Company: Fountview Enterprise Solutions
+    License: MIT
+
+SEE ALSO
+    Install-ADDSForest
+        https://learn.microsoft.com/powershell/module/addsdeployment/install-addsforest
+
+    Install-ADDSDomainController
+        https://learn.microsoft.com/powershell/module/addsdeployment/install-addsdomaincontroller
+
+    Register-SecretVault
+        https://learn.microsoft.com/powershell/module/microsoft.powershell.secretmanagement/register-secretvault
+
+    Get-WindowsFeature
+        https://learn.microsoft.com/powershell/module/servermanager/get-windowsfeature
