@@ -200,7 +200,7 @@ function Invoke-ADDomainController {
 
         PSCustomObject (when -PassThru is specified)
             Returns a custom object with DC promotion details:
-            - PSTypeName: 'Invoke-ADDSDomainController.ADDSDomainController'
+            - PSTypeName: 'Invoke-ADDomainController.ADDSDomainController'
             - DomainName: [string]
             - SiteName: [string]
             - DatabasePath: [string]
@@ -454,17 +454,12 @@ function Invoke-ADDomainController {
                     SiteName   = $SiteName
                 }
 
-                # Add optional params only when explicitly bound; map public names to private names
+                # Add optional params only when explicitly bound
                 foreach ($p in @('SafeModeAdministratorPassword', 'DomainAdminCredential',
                         'ResourceGroupName', 'KeyVaultName', 'SecretName', 'VaultName',
                         'DatabasePath', 'LogPath', 'SysvolPath')) {
                     if ($PSBoundParameters.ContainsKey($p)) {
-                        $privateKey = switch ($p) {
-                            'DatabasePath' { 'DataBasePath' }
-                            'SysvolPath' { 'SYSVOLPath' }
-                            default { $p }
-                        }
-                        $params[$privateKey] = $PSBoundParameters[$p]
+                        $params[$p] = $PSBoundParameters[$p]
                     }
                 }
 
@@ -499,7 +494,7 @@ function Invoke-ADDomainController {
                     Write-ToLog -Message "PassThru specified - returning configuration object" -Level INFO
 
                     return [PSCustomObject]@{
-                        PSTypeName   = 'Invoke-ADDSDomainController.ADDSDomainController'
+                        PSTypeName   = 'Invoke-ADDomainController.ADDSDomainController'
                         DomainName   = $DomainName
                         SiteName     = $SiteName
                         DatabasePath = if ($PSBoundParameters.ContainsKey('DatabasePath')) { $DatabasePath } else { "$env:SYSTEMDRIVE\Windows" }

@@ -2,6 +2,13 @@
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
+
+    $builtModulePath = Join-Path -Path $PSScriptRoot -ChildPath '../../../output/module' | Convert-Path -ErrorAction SilentlyContinue
+    if ($builtModulePath -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     Import-Module -Name $script:dscModuleName
 }
 
@@ -14,6 +21,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When all checks pass' {
         It 'Should return $true when platform, feature, and path checks all pass' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper { [PSCustomObject]@{ Name = 'AD-Domain-Services'; Installed = $true; InstallState = 'Installed' } }
 
@@ -27,6 +35,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When the platform is not Windows Server (ProductType != 3)' {
         It 'Should throw when ProductType is 1 (Workstation)' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 1; Caption = 'Windows 11 Pro' } }
 
                 { Test-PreflightCheck } | Should -Throw -ExpectedMessage '*Windows Server required*'
@@ -35,6 +44,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
 
         It 'Should throw when ProductType is 2 (backup domain controller)' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 2; Caption = 'Windows Server 2025' } }
 
                 { Test-PreflightCheck } | Should -Throw
@@ -45,6 +55,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When a required feature is not installed but is available' {
         It 'Should return $false when the feature exists but is not installed' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper { [PSCustomObject]@{ Name = 'AD-Domain-Services'; Installed = $false; InstallState = 'Available' } }
 
@@ -58,6 +69,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When a required feature is not found on the server' {
         It 'Should throw when the feature cannot be found' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper -ParameterFilter { $Name } { $null }
                 Mock Get-WindowsFeatureWrapper { @() }
@@ -70,6 +82,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When no required features are specified' {
         It 'Should skip feature validation and return $true' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
 
                 $result = Test-PreflightCheck -RequiredFeatures @()
@@ -82,6 +95,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When a required path does not exist' {
         It 'Should throw when a required path is missing' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper { [PSCustomObject]@{ Name = 'AD-Domain-Services'; Installed = $true; InstallState = 'Installed' } }
                 Mock Test-PathWrapper { $false }
@@ -95,6 +109,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When disk space is insufficient' {
         It 'Should throw when free space is below MinDiskGB' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper { [PSCustomObject]@{ Name = 'AD-Domain-Services'; Installed = $true; InstallState = 'Installed' } }
                 Mock Test-PathWrapper { $true }
@@ -109,6 +124,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
     Context 'When disk space is sufficient' {
         It 'Should return $true when free space meets MinDiskGB' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
                 Mock Get-WindowsFeatureWrapper { [PSCustomObject]@{ Name = 'AD-Domain-Services'; Installed = $true; InstallState = 'Installed' } }
                 Mock Test-PathWrapper { $true }
@@ -136,6 +152,7 @@ Describe 'Test-PreflightCheck' -Tag 'Unit' {
 
         It 'Should accept MinDiskGB = 1 (minimum valid value)' {
             InModuleScope -ModuleName $script:dscModuleName {
+                Mock -ModuleName $script:dscModuleName -CommandName Test-IsWindowsPlatform -MockWith { return $true }
                 Mock Get-CimInstance { [PSCustomObject]@{ ProductType = 3; Caption = 'Windows Server 2025' } }
 
                 { Test-PreflightCheck -RequiredFeatures @() -MinDiskGB 1 } | Should -Not -Throw

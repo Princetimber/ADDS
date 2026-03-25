@@ -106,11 +106,11 @@ Both public functions resolve the Safe Mode password in this order (first match 
 $PSDefaultParameterValues = @{
     'Invoke-ADDSForest:DatabasePath'           = "$env:SYSTEMDRIVE\Windows"
     'Invoke-ADDSForest:LogPath'                = "$env:SYSTEMDRIVE\Windows\NTDS\"
-    'Invoke-ADDSForest:SYSVOLPATH'             = "$env:SYSTEMDRIVE\Windows"
-    'Invoke-ADDSDomainController:SiteName'     = 'Default-First-Site-Name'
-    'Invoke-ADDSDomainController:DatabasePath' = "$env:SYSTEMDRIVE\Windows"
-    'Invoke-ADDSDomainController:LogPath'      = "$env:SYSTEMDRIVE\Windows\NTDS\"
-    'Invoke-ADDSDomainController:SYSVOLPath'   = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDSForest:SysvolPath'             = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDomainController:SiteName'       = 'Default-First-Site-Name'
+    'Invoke-ADDomainController:DatabasePath'   = "$env:SYSTEMDRIVE\Windows"
+    'Invoke-ADDomainController:LogPath'        = "$env:SYSTEMDRIVE\Windows\NTDS\"
+    'Invoke-ADDomainController:SysvolPath'     = "$env:SYSTEMDRIVE\Windows"
 }
 ```
 

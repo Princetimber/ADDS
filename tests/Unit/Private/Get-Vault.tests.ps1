@@ -2,6 +2,13 @@
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
+
+    $builtModulePath = Join-Path -Path $PSScriptRoot -ChildPath '../../../output/module' | Convert-Path -ErrorAction SilentlyContinue
+    if ($builtModulePath -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     Import-Module -Name $script:dscModuleName
 }
 

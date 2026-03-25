@@ -66,11 +66,11 @@
         UsePSResourceGet to the value $true. If UsePSResourceGet is not configured or
         set to $false then PowerShellGet will be used to resolve dependencies.
     #>
-    UsePSResourceGet                           = $false # Disabled to avoid Save-PSResource issues
+    UsePSResourceGet                           = $true # Default to range-aware dependency resolution
     PSResourceGetVersion                       = '1.0.1'
 
     # PowerShellGet compatibility module only works when using PSResourceGet or ModuleFast.
-    # Disable to avoid Save-PSResource errors in some environments.
+    # Keep disabled unless a specific compatibility gap requires it.
     UsePowerShellGetCompatibilityModule        = $false
     UsePowerShellGetCompatibilityModuleVersion = '3.0.23-beta23'
 }

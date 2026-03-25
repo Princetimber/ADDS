@@ -1,7 +1,8 @@
-﻿<#
-    This file is intentionally left empty. It is must be left here for the module
-    manifest to refer to. It is recreated during the build process.
-  #>
+<#
+    Root module bootstrapper for Invoke-ADDS.
+    It establishes module defaults, dot-sources private and public functions,
+    and exports the public surface during import/build.
+#>
 
 # ============================================================================
 # MODULE DEFAULT PARAMETER VALUES
@@ -9,11 +10,11 @@
 $PSDefaultParameterValues = @{
    'Invoke-ADDSForest:DatabasePath'           = "$env:SYSTEMDRIVE\Windows"
    'Invoke-ADDSForest:LogPath'                = "$env:SYSTEMDRIVE\Windows\NTDS\"
-   'Invoke-ADDSForest:SYSVOLPATH'             = "$env:SYSTEMDRIVE\Windows"
-   'Invoke-ADDSDomainController:SiteName'     = 'Default-First-Site-Name'
-   'Invoke-ADDSDomainController:DatabasePath' = "$env:SYSTEMDRIVE\Windows"
-   'Invoke-ADDSDomainController:LogPath'      = "$env:SYSTEMDRIVE\Windows\NTDS\"
-   'Invoke-ADDSDomainController:SYSVOLPath'   = "$env:SYSTEMDRIVE\Windows"
+   'Invoke-ADDSForest:SysvolPath'             = "$env:SYSTEMDRIVE\Windows"
+   'Invoke-ADDomainController:SiteName'       = 'Default-First-Site-Name'
+   'Invoke-ADDomainController:DatabasePath'   = "$env:SYSTEMDRIVE\Windows"
+   'Invoke-ADDomainController:LogPath'        = "$env:SYSTEMDRIVE\Windows\NTDS\"
+   'Invoke-ADDomainController:SysvolPath'     = "$env:SYSTEMDRIVE\Windows"
 }
 
 # dot-Source Private functions
@@ -22,7 +23,7 @@ foreach ($function in $PrivateFunctions) {
    try {
       . $function.FullName
    } catch {
-      Write-Warning "Failed to dot-source private function file: $($function.FullName). Error: $($_.Exception.Message)"
+      throw "Failed to import private function file '$($function.FullName)': $($_.Exception.Message)"
    }
 }
 
@@ -33,6 +34,6 @@ foreach ($function in $PublicFunctions) {
       . $function.FullName
       Export-ModuleMember -Function $function.BaseName
    } catch {
-      Write-Warning "Failed to dot-source public function file: $($function.FullName). Error: $($_.Exception.Message)"
+      throw "Failed to import public function file '$($function.FullName)': $($_.Exception.Message)"
    }
 }

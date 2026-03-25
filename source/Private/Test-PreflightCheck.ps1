@@ -23,7 +23,7 @@ function Test-PreflightCheck {
         $MinDiskGB = 4
     )
 
-    begin {
+        begin {
         $_earlyExit = $false
         Write-ToLog -Message "Starting preflight checks..." -Level INFO
 
@@ -34,7 +34,7 @@ function Test-PreflightCheck {
         # Platform validation: Windows Server required
         $checksPerformed++
         try {
-            if (-not $IsWindows) {
+            if (-not (Test-IsWindowsPlatform)) {
                 Write-ToLog -Message "Platform check failed: This module requires Windows operating system." -Level ERROR
                 $checksFailed++
                 $_earlyExit = $true

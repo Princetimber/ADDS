@@ -3,7 +3,7 @@
 # Timestamp format used for log file names and archives (shared with Clear-LogFile)
 $script:LogTimestampFormat = 'yyyyMMdd_HHmmss'
 
-# Thread-safe, auto-rotating logger for Invoke-ADDSDomainController.
+# Thread-safe, auto-rotating logger for Invoke-ADDS.
 # Entry point: Write-ToLog. Levels: INFO, DEBUG, WARN, ERROR, SUCCESS.
 
 # ============================================================================
@@ -21,7 +21,7 @@ function Initialize-LogFilePath {
     param()
 
     if (-not $Global:LogFile) {
-        $Global:LogFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "Invoke-ADDSDomainController_$([System.DateTimeOffset]::UtcNow.ToString($script:LogTimestampFormat)).log")
+        $Global:LogFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "Invoke-ADDS_$([System.DateTimeOffset]::UtcNow.ToString($script:LogTimestampFormat)).log")
     }
     return $Global:LogFile
 }
@@ -56,8 +56,6 @@ function Write-ToLog {
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([bool])]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidGlobalVars', '')]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '',
-        Justification = 'Write-Host is intentional for colored console output in a logging function.')]
     param (
         [Parameter(
             Mandatory,
@@ -114,7 +112,7 @@ function Write-ToLog {
 
         # Initialize mutex for thread safety (reuse existing if available)
         if (-not $script:LogMutex) {
-            $script:LogMutex = [System.Threading.Mutex]::new($false, 'Global\Invoke-ADDSDomainControllerLog')
+            $script:LogMutex = [System.Threading.Mutex]::new($false, 'Global\Invoke-ADDSLog')
         }
     }
 
@@ -210,37 +208,23 @@ Inner Exception: $($ErrorRecord.Exception.InnerException.Message)
             }
         }
 
-        # Console output with ANSI colors (PowerShell 7.2+ PSStyle, fallback to escape codes)
+        # Console output via native PowerShell streams
         if (-not $NoConsole) {
-            if ($PSStyle) {
-                $colorRed = $PSStyle.Foreground.Red
-                $colorYellow = $PSStyle.Foreground.Yellow
-                $colorGreen = $PSStyle.Foreground.Green
-                $colorCyan = $PSStyle.Foreground.Cyan
-                $colorReset = $PSStyle.Reset
-            } else {
-                $colorRed = "`e[31m"
-                $colorYellow = "`e[33m"
-                $colorGreen = "`e[32m"
-                $colorCyan = "`e[36m"
-                $colorReset = "`e[0m"
-            }
-
             switch ($Level) {
                 'ERROR' {
-                    Write-Host "${colorRed}✗ $sanitizedMessage${colorReset}"
+                    Write-Error -Message $sanitizedMessage -ErrorAction Continue
                 }
                 'WARN' {
-                    Write-Host "${colorYellow}⚠ $sanitizedMessage${colorReset}"
+                    Write-Warning -Message $sanitizedMessage
                 }
                 'SUCCESS' {
-                    Write-Host "${colorGreen}✓ $sanitizedMessage${colorReset}"
+                    Write-Information -MessageData $sanitizedMessage -InformationAction Continue
                 }
                 'DEBUG' {
                     Write-Verbose -Message $sanitizedMessage
                 }
                 default {
-                    Write-Host "${colorCyan}ℹ $sanitizedMessage${colorReset}"
+                    Write-Verbose -Message $sanitizedMessage
                 }
             }
         }

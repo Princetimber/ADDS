@@ -2,6 +2,13 @@
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
+
+    $builtModulePath = Join-Path -Path $PSScriptRoot -ChildPath '../../../output/module' | Convert-Path -ErrorAction SilentlyContinue
+    if ($builtModulePath -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     Import-Module -Name $script:dscModuleName
 }
 
@@ -41,12 +48,12 @@ Describe 'Invoke-ADDSForest' -Tag 'Unit' {
     }
 
     Context 'When -PassThru is specified' {
-        It 'Should return a PSCustomObject with type Invoke-ADDSDomainController.ADDSForest' {
+        It 'Should return a PSCustomObject with type Invoke-ADDSForest.ADDSForest' {
             InModuleScope -ModuleName $script:dscModuleName {
                 $result = Invoke-ADDSForest -DomainName 'contoso.com' -PassThru -Confirm:$false
 
                 $result | Should -Not -BeNullOrEmpty
-                $result.PSObject.TypeNames | Should -Contain 'Invoke-ADDSDomainController.ADDSForest'
+                $result.PSObject.TypeNames | Should -Contain 'Invoke-ADDSForest.ADDSForest'
             }
         }
 

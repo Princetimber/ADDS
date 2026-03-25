@@ -5,6 +5,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `Write-ToLog`: replaced `Write-Host` calls with native PowerShell streams
+  (`Write-Verbose`, `Write-Warning`, `Write-Error`, `Write-Information`) so
+  output respects `-Verbose`/`-WarningAction` preference variables.
+- `source/Invoke-ADDS.psm1`: dot-source failures now `throw` instead of
+  `Write-Warning`, surfacing broken function files immediately at import time.
+- `Resolve-Dependency.psd1`: set `UsePSResourceGet = $true` to use the modern
+  `Microsoft.PowerShell.PSResourceGet` module for dependency resolution.
+- `GitVersion.yml`: replaced deprecated `{NuGetVersionV2}` token with `{SemVer}`
+  for assembly versioning.
+
+### Fixed
+
+- Renamed `Clear-Logfile.ps1` to `Clear-LogFile.ps1` to match PascalCase function
+  name and prevent dot-source failures on case-sensitive file systems (Linux/macOS).
+- Renamed `Test-IfPathExistsOrNot.ps1` to `Test-IfPathExistOrNot.ps1` to match the
+  actual function name declared inside the file.
+- `New-ADDSForest.ps1`: corrected parameter variable `$DomainNetbiosName` to
+  `$DomainNetBiosName` to match the declared parameter name (PascalCase).
+- `New-ADDomainController.ps1`: renamed parameters `$DataBasePath`/`$SYSVOLPath` to
+  `$DatabasePath`/`$SysvolPath` for consistent PascalCase; updated caller
+  `Invoke-ADDomainController.ps1` and corresponding unit tests.
+- Removed all residual `Invoke-ADDSDomainController` references (replaced with
+  `Invoke-ADDomainController`) in source, tests, and module manifest.
+
 ## [0.0.2] - 2026-03-24
 
 ### Changed

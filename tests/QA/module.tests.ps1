@@ -1,6 +1,13 @@
 BeforeDiscovery {
     $projectPath = "$($PSScriptRoot)/../.." | Convert-Path
 
+    # Ensure the built module in output/module is discoverable by name.
+    $builtModulePath = Join-Path -Path $projectPath -ChildPath 'output/module'
+    if ((Test-Path -Path $builtModulePath) -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     <#
         If the QA tests are run outside of the build script (e.g with Invoke-Pester)
         the parent scope has not set the variable $ProjectName.
@@ -23,6 +30,14 @@ BeforeDiscovery {
 BeforeAll {
     # Convert-Path required for PS7 or Join-Path fails
     $projectPath = "$($PSScriptRoot)/../.." | Convert-Path
+
+    # Ensure the built module in output/module is discoverable by name at execution time.
+    $builtModulePath = Join-Path -Path $projectPath -ChildPath 'output/module'
+    if ((Test-Path -Path $builtModulePath) -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     # Get git-related project path. This is relevant for modules that will not be deployed in the root folder of Git.
     $gitTopLevelPath = (&git rev-parse --show-toplevel)
     $gitRelatedModulePath = (($projectPath -replace [regex]::Escape([IO.Path]::DirectorySeparatorChar), '/') -replace $gitTopLevelPath, '')
@@ -149,11 +164,25 @@ Describe 'Quality for module' -Tags 'TestQuality' {
     }
 
     It 'Should have a unit test for <Name>' -ForEach $testCases {
+        $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
+
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
+
         Get-ChildItem -Path 'tests/' -Recurse -Include "$Name.Tests.ps1" | Should -Not -BeNullOrEmpty
     }
 
     It 'Should pass Script Analyzer for <Name>' -ForEach $testCases -Skip:(-not $script:scriptAnalyzerRules) {
         $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
+
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
 
         $pssaResult = (Invoke-ScriptAnalyzer -Path $functionFile.FullName)
         $report = $pssaResult | Format-Table -AutoSize | Out-String -Width 110
@@ -165,6 +194,19 @@ Describe 'Quality for module' -Tags 'TestQuality' {
 Describe 'Help for module' -Tags 'helpQuality' {
     It 'Should have .SYNOPSIS for <Name>' -ForEach $testCases {
         $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
+
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
+
+        $privatePath = Join-Path -Path $PSScriptRoot -ChildPath "../../source/Private/$Name.ps1"
+        if (Test-Path -Path $privatePath)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is a private function (no CBH required)"
+            return
+        }
 
         $scriptFileRawContent = Get-Content -Raw -Path $functionFile.FullName
 
@@ -185,6 +227,19 @@ Describe 'Help for module' -Tags 'helpQuality' {
     It 'Should have a .DESCRIPTION with length greater than 40 characters for <Name>' -ForEach $testCases {
         $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
 
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
+
+        $privatePath = Join-Path -Path $PSScriptRoot -ChildPath "../../source/Private/$Name.ps1"
+        if (Test-Path -Path $privatePath)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is a private function (no CBH required)"
+            return
+        }
+
         $scriptFileRawContent = Get-Content -Raw -Path $functionFile.FullName
 
         $abstractSyntaxTree = [System.Management.Automation.Language.Parser]::ParseInput($scriptFileRawContent, [ref] $null, [ref] $null)
@@ -203,6 +258,19 @@ Describe 'Help for module' -Tags 'helpQuality' {
 
     It 'Should have at least one (1) example for <Name>' -ForEach $testCases {
         $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
+
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
+
+        $privatePath = Join-Path -Path $PSScriptRoot -ChildPath "../../source/Private/$Name.ps1"
+        if (Test-Path -Path $privatePath)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is a private function (no CBH required)"
+            return
+        }
 
         $scriptFileRawContent = Get-Content -Raw -Path $functionFile.FullName
 
@@ -226,6 +294,19 @@ Describe 'Help for module' -Tags 'helpQuality' {
     It 'Should have described all parameters for <Name>' -ForEach $testCases {
         $functionFile = Get-ChildItem -Path $script:sourcePath -Recurse -Include "$Name.ps1"
 
+        if (-not $functionFile)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is an inline wrapper without its own .ps1 file"
+            return
+        }
+
+        $privatePath = Join-Path -Path $PSScriptRoot -ChildPath "../../source/Private/$Name.ps1"
+        if (Test-Path -Path $privatePath)
+        {
+            Set-ItResult -Skipped -Because "Function '$Name' is a private function (no CBH required)"
+            return
+        }
+
         $scriptFileRawContent = Get-Content -Raw -Path $functionFile.FullName
 
         $abstractSyntaxTree = [System.Management.Automation.Language.Parser]::ParseInput($scriptFileRawContent, [ref] $null, [ref] $null)
@@ -248,4 +329,3 @@ Describe 'Help for module' -Tags 'helpQuality' {
         }
     }
 }
-

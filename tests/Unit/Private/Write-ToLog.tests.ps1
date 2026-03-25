@@ -3,6 +3,12 @@
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
 
+    $builtModulePath = Join-Path -Path $PSScriptRoot -ChildPath '../../../output/module' | Convert-Path -ErrorAction SilentlyContinue
+    if ($builtModulePath -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     Import-Module -Name $script:dscModuleName
 }
 
@@ -164,15 +170,71 @@ Describe 'Write-ToLog' -Tag 'Unit' {
     }
 
     Context 'When NoConsole is specified' {
-        It 'Should not call Write-Host' {
+        It 'Should not emit to PowerShell streams' {
             InModuleScope -ModuleName $script:dscModuleName {
                 Mock Add-ContentWrapper
                 Mock Test-PathWrapper { $false }
-                Mock Write-Host
 
-                Write-ToLog -Message 'Silent entry' -Level INFO -NoConsole
+                $streamOutput = Write-ToLog -Message 'Silent entry' -Level INFO -NoConsole 3>&1 4>&1 6>&1
 
-                Should -Invoke Write-Host -Times 0
+                $streamOutput | Should -BeNullOrEmpty
+            }
+        }
+    }
+
+    Context 'When writing to native PowerShell streams' {
+        It 'Should emit INFO through Write-Verbose' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-ContentWrapper
+                Mock Test-PathWrapper { $false }
+
+                $streamOutput = Write-ToLog -Message 'Info message' -Level INFO -Verbose 4>&1
+
+                ($streamOutput | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] }).Message | Should -Contain 'Info message'
+            }
+        }
+
+        It 'Should emit WARN through Write-Warning' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-ContentWrapper
+                Mock Test-PathWrapper { $false }
+
+                $streamOutput = Write-ToLog -Message 'Warning message' -Level WARN 3>&1
+
+                ($streamOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] }).Message | Should -Contain 'Warning message'
+            }
+        }
+
+        It 'Should emit ERROR through Write-Error' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-ContentWrapper
+                Mock Test-PathWrapper { $false }
+
+                $streamOutput = Write-ToLog -Message 'Error message' -Level ERROR 2>&1
+
+                ($streamOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }).Exception.Message | Should -Contain 'Error message'
+            }
+        }
+
+        It 'Should emit SUCCESS through Write-Information' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-ContentWrapper
+                Mock Test-PathWrapper { $false }
+
+                $streamOutput = Write-ToLog -Message 'Success message' -Level SUCCESS 6>&1
+
+                ($streamOutput | Where-Object { $_ -is [System.Management.Automation.InformationRecord] }).MessageData | Should -Contain 'Success message'
+            }
+        }
+
+        It 'Should emit DEBUG through Write-Verbose' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-ContentWrapper
+                Mock Test-PathWrapper { $false }
+
+                $streamOutput = Write-ToLog -Message 'Debug message' -Level DEBUG -Verbose 4>&1
+
+                ($streamOutput | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] }).Message | Should -Contain 'Debug message'
             }
         }
     }

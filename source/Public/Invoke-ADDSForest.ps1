@@ -223,7 +223,7 @@ function Invoke-ADDSForest {
 
         PSCustomObject (when -PassThru is specified)
             Returns a custom object with forest configuration details:
-            - PSTypeName: 'Invoke-ADDSDomainController.ADDSForest'
+            - PSTypeName: 'Invoke-ADDSForest.ADDSForest'
             - DomainName: [string]
             - DomainNetBiosName: [string]
             - ForestMode: [string]
@@ -558,7 +558,7 @@ function Invoke-ADDSForest {
                     Write-ToLog -Message "PassThru specified - returning configuration object" -Level INFO
 
                     return [PSCustomObject]@{
-                        PSTypeName        = 'Invoke-ADDSDomainController.ADDSForest'
+                        PSTypeName        = 'Invoke-ADDSForest.ADDSForest'
                         DomainName        = $DomainName
                         DomainNetBiosName = if ($PSBoundParameters.ContainsKey('DomainNetBiosName')) { $DomainNetBiosName } else { $DomainName.Split('.')[0].ToUpper() }
                         ForestMode        = $ForestMode

@@ -84,11 +84,11 @@ LONG DESCRIPTION
 
         Invoke-ADDSForest:DatabasePath          C:\Windows
         Invoke-ADDSForest:LogPath               C:\Windows\NTDS\
-        Invoke-ADDSForest:SYSVOLPath            C:\Windows
-        Invoke-ADDSDomainController:SiteName    Default-First-Site-Name
-        Invoke-ADDSDomainController:DatabasePath  C:\Windows
-        Invoke-ADDSDomainController:LogPath     C:\Windows\NTDS\
-        Invoke-ADDSDomainController:SYSVOLPath  C:\Windows
+        Invoke-ADDSForest:SysvolPath            C:\Windows
+        Invoke-ADDomainController:SiteName      Default-First-Site-Name
+        Invoke-ADDomainController:DatabasePath  C:\Windows
+        Invoke-ADDomainController:LogPath       C:\Windows\NTDS\
+        Invoke-ADDomainController:SysvolPath    C:\Windows
 
     Override any default by supplying the parameter explicitly.
 

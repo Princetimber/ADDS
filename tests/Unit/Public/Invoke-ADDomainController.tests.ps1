@@ -2,6 +2,13 @@
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
+
+    $builtModulePath = Join-Path -Path $PSScriptRoot -ChildPath '../../../output/module' | Convert-Path -ErrorAction SilentlyContinue
+    if ($builtModulePath -and ($env:PSModulePath -notlike "*$builtModulePath*"))
+    {
+        $env:PSModulePath = $builtModulePath + [IO.Path]::PathSeparator + $env:PSModulePath
+    }
+
     Import-Module -Name $script:dscModuleName
 }
 
@@ -53,12 +60,12 @@ Describe 'Invoke-ADDomainController' -Tag 'Unit' {
     }
 
     Context 'When -PassThru is specified' {
-        It 'Should return a PSCustomObject with type Invoke-ADDSDomainController.ADDSDomainController' {
+        It 'Should return a PSCustomObject with type Invoke-ADDomainController.ADDSDomainController' {
             InModuleScope -ModuleName $script:dscModuleName {
                 $result = Invoke-ADDomainController -DomainName 'contoso.com' -PassThru -Confirm:$false
 
                 $result | Should -Not -BeNullOrEmpty
-                $result.PSObject.TypeNames | Should -Contain 'Invoke-ADDSDomainController.ADDSDomainController'
+                $result.PSObject.TypeNames | Should -Contain 'Invoke-ADDomainController.ADDSDomainController'
             }
         }
 
@@ -133,23 +140,23 @@ Describe 'Invoke-ADDomainController' -Tag 'Unit' {
         }
     }
 
-    Context 'When path parameters are mapped from public to private names' {
-        It 'Should map DatabasePath to DataBasePath when calling New-ADDomainController' {
+    Context 'When path parameters are forwarded to New-ADDomainController' {
+        It 'Should forward DatabasePath when calling New-ADDomainController' {
             InModuleScope -ModuleName $script:dscModuleName {
                 Invoke-ADDomainController -DomainName 'contoso.com' -DatabasePath 'D:\NTDS' -Confirm:$false
 
                 Should -Invoke New-ADDomainController -Times 1 -ParameterFilter {
-                    $DataBasePath -eq 'D:\NTDS'
+                    $DatabasePath -eq 'D:\NTDS'
                 }
             }
         }
 
-        It 'Should map SysvolPath to SYSVOLPath when calling New-ADDomainController' {
+        It 'Should forward SysvolPath when calling New-ADDomainController' {
             InModuleScope -ModuleName $script:dscModuleName {
                 Invoke-ADDomainController -DomainName 'contoso.com' -SysvolPath 'D:\SYSVOL' -Confirm:$false
 
                 Should -Invoke New-ADDomainController -Times 1 -ParameterFilter {
-                    $SYSVOLPath -eq 'D:\SYSVOL'
+                    $SysvolPath -eq 'D:\SYSVOL'
                 }
             }
         }

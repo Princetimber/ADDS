@@ -48,7 +48,7 @@ function New-ADDomainController {
         [Parameter()]
         [ValidateNotNullOrEmpty()]
         [string]
-        $DataBasePath = "$env:SYSTEMDRIVE\Windows",
+        $DatabasePath = "$env:SYSTEMDRIVE\Windows",
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -58,7 +58,7 @@ function New-ADDomainController {
         [Parameter()]
         [ValidateNotNullOrEmpty()]
         [string]
-        $SYSVOLPath = "$env:SYSTEMDRIVE\Windows",
+        $SysvolPath = "$env:SYSTEMDRIVE\Windows",
 
         [Parameter()]
         [switch]
@@ -84,7 +84,7 @@ function New-ADDomainController {
 
             # Pre-flight validation
             Write-ToLog -Message 'Running pre-flight checks...' -Level INFO
-            $pathsToValidate = @($DataBasePath, $LogPath, $SYSVOLPath) |
+            $pathsToValidate = @($DatabasePath, $LogPath, $SysvolPath) |
                 Where-Object { -not [string]::IsNullOrEmpty($_) } |
                     ForEach-Object { Split-Path -Path $_ -Parent } |
                         Where-Object { -not [string]::IsNullOrEmpty($_) } |
@@ -164,8 +164,8 @@ function New-ADDomainController {
 
             # Build final ADDS directory paths
             $LOG_PATH = New-EnvPath -Path $LogPath      -ChildPath 'logs'
-            $DATABASE_PATH = New-EnvPath -Path $DataBasePath -ChildPath 'ntds'
-            $SYSVOL_PATH = New-EnvPath -Path $SYSVOLPath   -ChildPath 'sysvol'
+            $DATABASE_PATH = New-EnvPath -Path $DatabasePath -ChildPath 'ntds'
+            $SYSVOL_PATH = New-EnvPath -Path $SysvolPath   -ChildPath 'sysvol'
 
             Write-ToLog -Message "Database Path: $DATABASE_PATH" -Level INFO
             Write-ToLog -Message "Log Path: $LOG_PATH" -Level INFO

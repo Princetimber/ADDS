@@ -16,7 +16,7 @@ function New-ADDSForest {
         [Parameter(Position = 1)]
         [ValidateNotNullOrEmpty()]
         [string]
-        $DomainNetbiosName,
+        $DomainNetBiosName,
 
         [Parameter(Position = 2)]
         [SecureString]
