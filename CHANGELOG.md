@@ -50,6 +50,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   satisfies range". Repinned to `[0.4.1,1.0)`. Also bumped `InvokeBuild`'s lower
   bound to `5.10.5` to avoid a `ProgressAction` parameter collision on PowerShell
   7.4+ if an older cached version is ever picked up.
+- `Resolve-Dependency.psd1`: dependency bootstrap had both `UsePSResourceGet` and
+  `UseModuleFast` disabled, forcing the legacy PowerShellGet fallback path, which
+  calls `Install-PackageProvider`/`Install-Package` and requires elevation. This
+  failed the "Build Module" CI job on every push to `main` since CI was created,
+  with "Administrator rights are required... or install by adding -Scope
+  CurrentUser" on the unelevated `ubuntu-latest` runner. Enabled
+  `UsePSResourceGet` and bumped `PSResourceGetVersion` from `1.0.1` to `1.2.0`
+  (the pinned version could not reliably resolve PSGallery V2 metadata);
+  `Save-PSResource` installs to the user scope without elevation. Verified with
+  `pwsh -NoProfile -File ./Resolve-Dependency.ps1`, which resolved and installed
+  every dependency cleanly.
 
 ## [0.0.2] - 2026-03-24
 
