@@ -70,8 +70,9 @@ function Invoke-ADDomainController {
 
         If not provided, the function will prompt interactively for the password.
 
-        For automation scenarios, create a SecureString:
-        $pass = ConvertTo-SecureString 'YourPassword' -AsPlainText -Force
+        For automation scenarios, retrieve a SecureString from a secret store rather than
+        a plaintext literal — for example:
+        $pass = Get-Secret -Name 'DSRMPassword' -Vault 'LocalStore' -AsSecureString
 
     .PARAMETER DomainAdminCredential
         Credentials for an existing domain administrator account in the target domain.

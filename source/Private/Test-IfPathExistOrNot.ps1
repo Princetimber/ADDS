@@ -76,23 +76,4 @@ function Test-IfPathExistOrNot {
     }
 }
 
-# Helper function for mockability in tests
-function Test-PathWrapper {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
-        Justification = 'Wrapper function for testing purposes only; does not change state. Only queries path existence.')]
-    param(
-        [Parameter(Mandatory)]
-        [string]
-        $Path,
-
-        [Parameter()]
-        [string]
-        $PathType
-    )
-
-    if ($PathType) {
-        return Test-Path -Path $Path -PathType $PathType
-    } else {
-        return Test-Path -Path $Path
-    }
-}
+# Test-PathWrapper is defined in Write-ToLog.ps1 (shared across the module).

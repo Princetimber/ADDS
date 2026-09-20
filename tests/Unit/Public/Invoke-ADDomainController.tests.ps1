@@ -1,4 +1,5 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
@@ -161,6 +162,17 @@ Describe 'Invoke-ADDomainController' -Tag 'Unit' {
                 Should -Invoke New-ADDomainController -Times 1 -ParameterFilter {
                     $LogPath -eq 'E:\Logs'
                 }
+            }
+        }
+    }
+
+    Context 'When New-ADDomainController throws' {
+        It 'Should rethrow an enhanced, actionable error message' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock New-ADDomainController { throw 'Underlying promotion failure' }
+
+                { Invoke-ADDomainController -DomainName 'contoso.com' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Failed to promote*contoso.com*Underlying promotion failure*Troubleshooting Tips*"
             }
         }
     }

@@ -1,4 +1,5 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
@@ -86,6 +87,22 @@ Describe 'Get-SafeModePassword' -Tag 'Unit' {
 
                 { Get-SafeModePassword } |
                     Should -Throw -ExpectedMessage '*Failed to obtain Safe Mode Administrator password*'
+            }
+        }
+    }
+
+    Context 'Read-HostWrapper' {
+        It 'Should call Read-Host -Prompt -AsSecureString' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                $mockSecure = ConvertTo-SecureString 'Prompted!' -AsPlainText -Force
+                Mock Read-Host { $mockSecure }
+
+                $result = Read-HostWrapper -Prompt 'Enter password' -AsSecureString
+
+                $result | Should -Be $mockSecure
+                Should -Invoke Read-Host -Times 1 -ParameterFilter {
+                    $Prompt -eq 'Enter password' -and $AsSecureString -eq $true
+                }
             }
         }
     }

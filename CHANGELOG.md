@@ -5,6 +5,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `New-ADDSForest` and `New-ADDomainController` no longer install the AD-Domain-Services
+  feature or required PowerShell modules before their `ShouldProcess` check — those
+  state-changing calls now run inside the gate, so `-WhatIf` no longer leaks real side
+  effects.
+- Renamed `Write-ErroLog.ps1` to `Write-ErrorLog.ps1`, `Test-IfPathExistsOrNot.ps1` to
+  `Test-IfPathExistOrNot.ps1`, and `Clear-Logfile.ps1` to `Clear-LogFile.ps1` so each
+  private function's filename matches the function it contains.
+- `tests/QA/module.tests.ps1` scoped its comment-based-help/example/parameter-description
+  checks to exported (Public) functions only. It previously enumerated every function
+  including private wrappers, which have no comment-based help by design.
+- Manifest: uncommented `CompatiblePSEditions = @('Core')`.
+- Replaced the plaintext `ConvertTo-SecureString 'YourPassword' -AsPlainText -Force`
+  placeholder in `Invoke-ADDSForest`/`Invoke-ADDomainController` help examples with a
+  `Get-Secret ... -AsSecureString` example.
+
+### Added
+
+- `Connect-ToAzure` now supports Managed Identity (`-UseManagedIdentity`), workload
+  identity federation (`-FederatedToken`/`-ApplicationId`/`-TenantId`), app-only
+  certificate (`-CertificateThumbprint`/`-CertificateApplicationId`/`-TenantId`), and
+  client secret (`-ServicePrincipalCredential`/`-TenantId`) authentication, in addition
+  to interactive browser and device code. Device code remains the default when no
+  credential is supplied, but is now treated as a last resort: it logs a warning naming
+  the stronger alternatives, and a Conditional-Access block is detected and rethrown as
+  an actionable error pointing at those alternatives instead of a raw MSAL error.
+- `Connect-ToAzure -UseExistingContext` makes reuse of an already-active Az context an
+  explicit, checkable request: it throws an actionable error naming the other
+  authentication parameter sets when no context is currently active, instead of
+  silently falling through to a device-code sign-in attempt.
+
+### Changed
+
+- Pester pinned to `[6.0.0,7.0)` (was `[5.6,6.0)`); all test files pin
+  `ModuleVersion = '6.0.0'` via `#Requires -Modules`.
+
+### Fixed
+
+- `RequiredModules.psd1`: `Sampler.GitHubTasks` was pinned to `[0.6,1.0)`, a range
+  never published to PSGallery (latest is `0.4.1`), so CI's dependency resolution
+  failed on every build with "No version of [Sampler.GitHubTasks] in [PSGallery]
+  satisfies range". Repinned to `[0.4.1,1.0)`. Also bumped `InvokeBuild`'s lower
+  bound to `5.10.5` to avoid a `ProgressAction` parameter collision on PowerShell
+  7.4+ if an older cached version is ever picked up.
+- `Resolve-Dependency.psd1`: dependency bootstrap had both `UsePSResourceGet` and
+  `UseModuleFast` disabled, forcing the legacy PowerShellGet fallback path, which
+  calls `Install-PackageProvider`/`Install-Package` and requires elevation. This
+  failed the "Build Module" CI job on every push to `main` since CI was created,
+  with "Administrator rights are required... or install by adding -Scope
+  CurrentUser" on the unelevated `ubuntu-latest` runner. Enabled
+  `UsePSResourceGet` and bumped `PSResourceGetVersion` from `1.0.1` to `1.2.0`
+  (the pinned version could not reliably resolve PSGallery V2 metadata);
+  `Save-PSResource` installs to the user scope without elevation. Verified with
+  `pwsh -NoProfile -File ./Resolve-Dependency.ps1`, which resolved and installed
+  every dependency cleanly.
+- `RequiredModules.psd1`: `ModuleBuilder` depends on `Configuration`, but it was
+  never listed as a direct dependency, so `Save-PSResource` never fetched it.
+  This surfaced only after the fix above, as `Import-Module -Name ModuleBuilder`
+  failing with "The required module 'Configuration' is not loaded." during the
+  `Build_ModuleOutput_ModuleBuilder` task. Added `Configuration = '[1.3.1,2.0)'`.
+- `.github/workflows/ci.yml`: with the build job now succeeding, the `test`
+  job's `[ubuntu-latest, windows-latest, macos-latest]` matrix ran for the
+  first time and failed on the two non-Windows runners — this module targets
+  Windows Server only, and the test suite intentionally hardcodes Windows
+  paths/`Get-CimInstance` rather than mocking for cross-platform. Restricted
+  the `test` job to `windows-latest` only.
+- With the `test` job now reachable, it also failed its own 85% code-coverage
+  gate at 79.07%. Added tests exercising previously-unexercised branches:
+  the outer error-handling `catch` in `Invoke-ADDSForest`/
+  `Invoke-ADDomainController` (mocking the private implementation function to
+  throw), the pre-registered-vault "list other registered vaults" branch in
+  `New-ADDSForest`/`New-ADDomainController`, the "list available repositories"
+  and "module not found in PSGallery" branches in `Invoke-ResourceModule`, and
+  direct calls to the thin wrapper functions that front built-in cmdlets
+  (`Test-PathWrapper`, `New-ItemDirectoryWrapper`, `Get-ItemWrapper`,
+  `Add-ContentWrapper`, `Move-ItemWrapper`, `Remove-ItemWrapper`,
+  `Read-HostWrapper`, `Copy-ItemWrapper`, `Clear-ContentWrapper`,
+  `Get-ModuleWrapper`) — these were previously only ever mocked by callers,
+  never tested themselves. Measured locally via
+  `Invoke-Pester -CodeCoverage` (macOS delta, used as a relative signal since
+  16 Windows-only tests always fail there): missed commands dropped from 449
+  to 348, a larger reduction than the 86 needed to clear 85% against the
+  Windows-runner baseline of 1145/1448 (79.07%).
+- `Test-PathWrapper` and `New-ItemDirectoryWrapper` were each defined twice
+  (in `Test-IfPathExistOrNot.ps1`/`New-ADDSForest.ps1` and again in
+  `Write-ToLog.ps1`), with differing signatures — `Write-ToLog.ps1`'s versions
+  support `-LiteralPath`, which every call site actually needs. Which
+  definition won at runtime was decided silently by `Get-ChildItem`'s
+  alphabetical dot-source order in `Invoke-ADDS.psm1`; it happened to resolve
+  correctly today, but was fragile. Removed the duplicate, always-shadowed
+  definitions, keeping the single `Write-ToLog.ps1` copy of each.
+
 ## [0.0.2] - 2026-03-24
 
 ### Changed

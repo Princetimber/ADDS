@@ -1,4 +1,5 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
@@ -149,6 +150,17 @@ Describe 'Invoke-ADDSForest' -Tag 'Unit' {
                 Should -Invoke New-ADDSForest -Times 1 -ParameterFilter {
                     $DomainMode -eq 'Win2012R2' -and $ForestMode -eq 'Win2012R2'
                 }
+            }
+        }
+    }
+
+    Context 'When New-ADDSForest throws' {
+        It 'Should rethrow an enhanced, actionable error message' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock New-ADDSForest { throw 'Underlying forest creation failure' }
+
+                { Invoke-ADDSForest -DomainName 'contoso.com' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Failed to create AD DS forest*contoso.com*Underlying forest creation failure*Troubleshooting Tips*"
             }
         }
     }

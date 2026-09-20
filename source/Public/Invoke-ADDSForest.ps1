@@ -53,8 +53,9 @@ function Invoke-ADDSForest {
 
         If not provided, the function will prompt interactively for the password.
 
-        For automation scenarios, create a SecureString:
-        $pass = ConvertTo-SecureString 'YourPassword' -AsPlainText -Force
+        For automation scenarios, retrieve a SecureString from a secret store rather than
+        a plaintext literal — for example:
+        $pass = Get-Secret -Name 'DSRMPassword' -Vault 'LocalStore' -AsSecureString
 
     .PARAMETER DomainNetBiosName
         The NetBIOS name for the domain (maximum 15 characters).

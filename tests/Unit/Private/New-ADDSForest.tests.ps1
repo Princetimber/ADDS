@@ -1,4 +1,5 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
 
 BeforeAll {
     $script:dscModuleName = 'Invoke-ADDS'
@@ -146,6 +147,19 @@ Describe 'New-ADDSForest' -Tag 'Unit' {
 
                 { New-ADDSForest -DomainName 'contoso.com' -VaultName 'UnknownVault' -SecretName 'DSRMPass' -Confirm:$false } |
                     Should -Throw -ExpectedMessage "*SecretManagement vault 'UnknownVault' is not registered*"
+            }
+        }
+
+        It 'Should list the other registered vaults when the specified vault is not registered' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Get-SecretVaultWrapper {
+                    if ($Name) { $null } else {
+                        @([PSCustomObject]@{ Name = 'OtherVault'; ModuleName = 'Microsoft.PowerShell.SecretStore' })
+                    }
+                }
+
+                { New-ADDSForest -DomainName 'contoso.com' -VaultName 'UnknownVault' -SecretName 'DSRMPass' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Registered vaults:*OtherVault*"
             }
         }
     }
