@@ -146,4 +146,30 @@ Describe 'Clear-LogFile' -Tag 'Unit' {
             }
         }
     }
+
+    Context 'Copy-ItemWrapper' {
+        It 'Should call Copy-Item -LiteralPath -Destination' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Copy-Item
+
+                Copy-ItemWrapper -LiteralPath 'C:\log.txt' -Destination 'C:\log.bak'
+
+                Should -Invoke Copy-Item -Times 1 -ParameterFilter {
+                    $LiteralPath -eq 'C:\log.txt' -and $Destination -eq 'C:\log.bak'
+                }
+            }
+        }
+    }
+
+    Context 'Clear-ContentWrapper' {
+        It 'Should call Clear-Content -LiteralPath' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Clear-Content
+
+                Clear-ContentWrapper -LiteralPath 'C:\log.txt'
+
+                Should -Invoke Clear-Content -Times 1 -ParameterFilter { $LiteralPath -eq 'C:\log.txt' }
+            }
+        }
+    }
 }

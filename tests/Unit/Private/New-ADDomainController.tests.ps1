@@ -148,6 +148,20 @@ Describe 'New-ADDomainController' -Tag 'Unit' {
                     Should -Throw -ExpectedMessage "*SecretManagement vault 'UnknownVault' is not registered*"
             }
         }
+
+        It 'Should list the other registered vaults when the specified vault is not registered' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Get-SecretVaultWrapper {
+                    if ($Name) { $null } else {
+                        @([PSCustomObject]@{ Name = 'OtherVault'; ModuleName = 'Microsoft.PowerShell.SecretStore' })
+                    }
+                }
+
+                { New-ADDomainController -DomainName 'contoso.com' -DomainAdminCredential $script:mockCred `
+                    -VaultName 'UnknownVault' -SecretName 'DSRMPass' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Registered vaults:*OtherVault*"
+            }
+        }
     }
 
     Context 'When DomainAdminCredential is not supplied' {

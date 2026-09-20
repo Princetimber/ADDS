@@ -140,4 +140,32 @@ Describe 'Invoke-LogRotation' -Tag 'Unit' {
             }
         }
     }
+
+    Context 'Move-ItemWrapper' {
+        It 'Should call Move-Item with -Force' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Move-Item
+
+                Move-ItemWrapper -LiteralPath 'C:\log.1' -Destination 'C:\log.2'
+
+                Should -Invoke Move-Item -Times 1 -ParameterFilter {
+                    $LiteralPath -eq 'C:\log.1' -and $Destination -eq 'C:\log.2' -and $Force -eq $true
+                }
+            }
+        }
+    }
+
+    Context 'Remove-ItemWrapper' {
+        It 'Should call Remove-Item with -Force' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Remove-Item
+
+                Remove-ItemWrapper -LiteralPath 'C:\log.5'
+
+                Should -Invoke Remove-Item -Times 1 -ParameterFilter {
+                    $LiteralPath -eq 'C:\log.5' -and $Force -eq $true
+                }
+            }
+        }
+    }
 }

@@ -166,6 +166,17 @@ Describe 'Invoke-ADDomainController' -Tag 'Unit' {
         }
     }
 
+    Context 'When New-ADDomainController throws' {
+        It 'Should rethrow an enhanced, actionable error message' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock New-ADDomainController { throw 'Underlying promotion failure' }
+
+                { Invoke-ADDomainController -DomainName 'contoso.com' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Failed to promote*contoso.com*Underlying promotion failure*Troubleshooting Tips*"
+            }
+        }
+    }
+
     Context 'When parameter validation fails' {
         It 'Should throw when DomainName is an empty string' {
             InModuleScope -ModuleName $script:dscModuleName {

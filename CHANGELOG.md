@@ -72,6 +72,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Windows Server only, and the test suite intentionally hardcodes Windows
   paths/`Get-CimInstance` rather than mocking for cross-platform. Restricted
   the `test` job to `windows-latest` only.
+- With the `test` job now reachable, it also failed its own 85% code-coverage
+  gate at 79.07%. Added tests exercising previously-unexercised branches:
+  the outer error-handling `catch` in `Invoke-ADDSForest`/
+  `Invoke-ADDomainController` (mocking the private implementation function to
+  throw), the pre-registered-vault "list other registered vaults" branch in
+  `New-ADDSForest`/`New-ADDomainController`, the "list available repositories"
+  and "module not found in PSGallery" branches in `Invoke-ResourceModule`, and
+  direct calls to the thin wrapper functions that front built-in cmdlets
+  (`Test-PathWrapper`, `New-ItemDirectoryWrapper`, `Get-ItemWrapper`,
+  `Add-ContentWrapper`, `Move-ItemWrapper`, `Remove-ItemWrapper`,
+  `Read-HostWrapper`, `Copy-ItemWrapper`, `Clear-ContentWrapper`,
+  `Get-ModuleWrapper`) — these were previously only ever mocked by callers,
+  never tested themselves. Measured locally via
+  `Invoke-Pester -CodeCoverage` (macOS delta, used as a relative signal since
+  16 Windows-only tests always fail there): missed commands dropped from 449
+  to 348, a larger reduction than the 86 needed to clear 85% against the
+  Windows-runner baseline of 1145/1448 (79.07%).
 
 ## [0.0.2] - 2026-03-24
 

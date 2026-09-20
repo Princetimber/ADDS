@@ -154,6 +154,17 @@ Describe 'Invoke-ADDSForest' -Tag 'Unit' {
         }
     }
 
+    Context 'When New-ADDSForest throws' {
+        It 'Should rethrow an enhanced, actionable error message' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock New-ADDSForest { throw 'Underlying forest creation failure' }
+
+                { Invoke-ADDSForest -DomainName 'contoso.com' -Confirm:$false } |
+                    Should -Throw -ExpectedMessage "*Failed to create AD DS forest*contoso.com*Underlying forest creation failure*Troubleshooting Tips*"
+            }
+        }
+    }
+
     Context 'When parameter validation fails' {
         It 'Should throw when DomainMode has an invalid value' {
             InModuleScope -ModuleName $script:dscModuleName {

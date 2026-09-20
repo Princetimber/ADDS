@@ -313,4 +313,82 @@ Describe 'Write-ToLog' -Tag 'Unit' {
             }
         }
     }
+
+    Context 'Test-PathWrapper' {
+        It 'Should call Test-Path -LiteralPath for the LiteralPath parameter set' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Test-Path { $true }
+
+                $result = Test-PathWrapper -LiteralPath 'C:\some\path'
+
+                $result | Should -BeTrue
+                Should -Invoke Test-Path -Times 1 -ParameterFilter { $LiteralPath -eq 'C:\some\path' }
+            }
+        }
+
+        It 'Should call Test-Path -Path -PathType for the Path parameter set with PathType' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Test-Path { $false }
+
+                $result = Test-PathWrapper -Path 'C:\some\path' -PathType Container
+
+                $result | Should -BeFalse
+                Should -Invoke Test-Path -Times 1 -ParameterFilter {
+                    $Path -eq 'C:\some\path' -and $PathType -eq 'Container'
+                }
+            }
+        }
+
+        It 'Should call Test-Path -Path without PathType when PathType is not supplied' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Test-Path { $true }
+
+                Test-PathWrapper -Path 'C:\some\path'
+
+                Should -Invoke Test-Path -Times 1 -ParameterFilter { $Path -eq 'C:\some\path' }
+            }
+        }
+    }
+
+    Context 'New-ItemDirectoryWrapper' {
+        It 'Should call New-Item with ItemType Directory' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock New-Item { [PSCustomObject]@{ FullName = 'C:\some\dir' } }
+
+                $result = New-ItemDirectoryWrapper -Path 'C:\some\dir'
+
+                $result.FullName | Should -Be 'C:\some\dir'
+                Should -Invoke New-Item -Times 1 -ParameterFilter {
+                    $Path -eq 'C:\some\dir' -and $ItemType -eq 'Directory'
+                }
+            }
+        }
+    }
+
+    Context 'Get-ItemWrapper' {
+        It 'Should call Get-Item -LiteralPath' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Get-Item { [PSCustomObject]@{ Length = 123 } }
+
+                $result = Get-ItemWrapper -LiteralPath 'C:\some\file.log'
+
+                $result.Length | Should -Be 123
+                Should -Invoke Get-Item -Times 1 -ParameterFilter { $LiteralPath -eq 'C:\some\file.log' }
+            }
+        }
+    }
+
+    Context 'Add-ContentWrapper' {
+        It 'Should call Add-Content -LiteralPath -Value' {
+            InModuleScope -ModuleName $script:dscModuleName {
+                Mock Add-Content
+
+                Add-ContentWrapper -LiteralPath 'C:\some\file.log' -Value 'entry'
+
+                Should -Invoke Add-Content -Times 1 -ParameterFilter {
+                    $LiteralPath -eq 'C:\some\file.log' -and $Value -eq 'entry'
+                }
+            }
+        }
+    }
 }
