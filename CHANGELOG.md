@@ -42,6 +42,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pester pinned to `[6.0.0,7.0)` (was `[5.6,6.0)`); all test files pin
   `ModuleVersion = '6.0.0'` via `#Requires -Modules`.
 
+### Fixed
+
+- `RequiredModules.psd1`: `Sampler.GitHubTasks` was pinned to `[0.6,1.0)`, a range
+  never published to PSGallery (latest is `0.4.1`), so CI's dependency resolution
+  failed on every build with "No version of [Sampler.GitHubTasks] in [PSGallery]
+  satisfies range". Repinned to `[0.4.1,1.0)`. Also bumped `InvokeBuild`'s lower
+  bound to `5.10.5` to avoid a `ProgressAction` parameter collision on PowerShell
+  7.4+ if an older cached version is ever picked up.
+
 ## [0.0.2] - 2026-03-24
 
 ### Changed
