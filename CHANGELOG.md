@@ -5,6 +5,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `New-ADDSForest` and `New-ADDomainController` no longer install the AD-Domain-Services
+  feature or required PowerShell modules before their `ShouldProcess` check — those
+  state-changing calls now run inside the gate, so `-WhatIf` no longer leaks real side
+  effects.
+- Renamed `Write-ErroLog.ps1` to `Write-ErrorLog.ps1`, `Test-IfPathExistsOrNot.ps1` to
+  `Test-IfPathExistOrNot.ps1`, and `Clear-Logfile.ps1` to `Clear-LogFile.ps1` so each
+  private function's filename matches the function it contains.
+- `tests/QA/module.tests.ps1` scoped its comment-based-help/example/parameter-description
+  checks to exported (Public) functions only. It previously enumerated every function
+  including private wrappers, which have no comment-based help by design.
+- Manifest: uncommented `CompatiblePSEditions = @('Core')`.
+- Replaced the plaintext `ConvertTo-SecureString 'YourPassword' -AsPlainText -Force`
+  placeholder in `Invoke-ADDSForest`/`Invoke-ADDomainController` help examples with a
+  `Get-Secret ... -AsSecureString` example.
+
+### Added
+
+- `Connect-ToAzure` now supports Managed Identity (`-UseManagedIdentity`), workload
+  identity federation (`-FederatedToken`/`-ApplicationId`/`-TenantId`), app-only
+  certificate (`-CertificateThumbprint`/`-CertificateApplicationId`/`-TenantId`), and
+  client secret (`-ServicePrincipalCredential`/`-TenantId`) authentication, in addition
+  to interactive browser and device code. Device code remains the default when no
+  credential is supplied, but is now treated as a last resort: it logs a warning naming
+  the stronger alternatives, and a Conditional-Access block is detected and rethrown as
+  an actionable error pointing at those alternatives instead of a raw MSAL error.
+- `Connect-ToAzure -UseExistingContext` makes reuse of an already-active Az context an
+  explicit, checkable request: it throws an actionable error naming the other
+  authentication parameter sets when no context is currently active, instead of
+  silently falling through to a device-code sign-in attempt.
+
+### Changed
+
+- Pester pinned to `[6.0.0,7.0)` (was `[5.6,6.0)`); all test files pin
+  `ModuleVersion = '6.0.0'` via `#Requires -Modules`.
+
 ## [0.0.2] - 2026-03-24
 
 ### Changed
