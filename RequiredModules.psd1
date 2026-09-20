@@ -16,6 +16,7 @@
     PSScriptAnalyzer            = '[1.22,2.0)'
     Pester                      = '[6.0.0,7.0)'
     ModuleBuilder               = '[3.0,4.0)'
+    Configuration               = '[1.3.1,2.0)'
     ChangelogManagement         = '[3.0,4.0)'
     Sampler                     = '[0.118,1.0)'
     'Sampler.GitHubTasks'       = '[0.4.1,1.0)'

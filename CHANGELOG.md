@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Save-PSResource` installs to the user scope without elevation. Verified with
   `pwsh -NoProfile -File ./Resolve-Dependency.ps1`, which resolved and installed
   every dependency cleanly.
+- `RequiredModules.psd1`: `ModuleBuilder` depends on `Configuration`, but it was
+  never listed as a direct dependency, so `Save-PSResource` never fetched it.
+  This surfaced only after the fix above, as `Import-Module -Name ModuleBuilder`
+  failing with "The required module 'Configuration' is not loaded." during the
+  `Build_ModuleOutput_ModuleBuilder` task. Added `Configuration = '[1.3.1,2.0)'`.
 
 ## [0.0.2] - 2026-03-24
 
