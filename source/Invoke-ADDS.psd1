@@ -13,7 +13,7 @@ RootModule = 'Invoke-ADDS.psm1'
 ModuleVersion = '0.0.2'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
+CompatiblePSEditions = @('Core')
 
 # ID used to uniquely identify this module
 GUID = 'bba58b53-3334-4125-b22d-9d59872db75a'
