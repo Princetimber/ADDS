@@ -1,3 +1,6 @@
+﻿#Requires -Version 7.0
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '6.0.0' }
+
 BeforeDiscovery {
     $projectPath = "$($PSScriptRoot)/../.." | Convert-Path
 
@@ -115,8 +118,15 @@ Describe 'General module control' -Tags 'FunctionalQuality' {
 }
 
 BeforeDiscovery {
-    # Must use the imported module to build test cases.
-    $allModuleFunctions = & $script:mut { Get-Command -Module $args[0] -CommandType Function } $script:moduleName
+    <#
+        Public (exported) functions only. Private functions intentionally omit
+        comment-based help per this project's coding-style rule (CBH is prohibited
+        on Private/ functions, since they are never exported and Get-Help cannot
+        surface them), so the help/CBH quality checks below must not run against
+        them. Get-Command -Module, called from outside the module's own scope,
+        returns only what the manifest exports -- exactly the Public/ functions.
+    #>
+    $allModuleFunctions = Get-Command -Module $script:moduleName -CommandType Function
 
     # Build test cases.
     $testCases = @()
