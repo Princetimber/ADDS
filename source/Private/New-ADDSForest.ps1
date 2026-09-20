@@ -306,17 +306,4 @@ function Get-SecretWrapper {
     return Get-Secret -Name $Name -Vault $Vault -AsSecureString
 }
 
-# Wraps New-Item -ItemType Directory for Pester mocking.
-function New-ItemDirectoryWrapper {
-    [CmdletBinding()]
-    [OutputType([void])]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
-        Justification = 'Wrapper function; ShouldProcess handled by calling function New-ADDSForest.')]
-    param(
-        [Parameter(Mandatory)]
-        [string]
-        $Path
-    )
-
-    New-Item -ItemType Directory -Path $Path -Force | Out-Null
-}
+# New-ItemDirectoryWrapper is defined in Write-ToLog.ps1 (shared across the module).

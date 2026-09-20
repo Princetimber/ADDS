@@ -89,6 +89,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   16 Windows-only tests always fail there): missed commands dropped from 449
   to 348, a larger reduction than the 86 needed to clear 85% against the
   Windows-runner baseline of 1145/1448 (79.07%).
+- `Test-PathWrapper` and `New-ItemDirectoryWrapper` were each defined twice
+  (in `Test-IfPathExistOrNot.ps1`/`New-ADDSForest.ps1` and again in
+  `Write-ToLog.ps1`), with differing signatures — `Write-ToLog.ps1`'s versions
+  support `-LiteralPath`, which every call site actually needs. Which
+  definition won at runtime was decided silently by `Get-ChildItem`'s
+  alphabetical dot-source order in `Invoke-ADDS.psm1`; it happened to resolve
+  correctly today, but was fragile. Removed the duplicate, always-shadowed
+  definitions, keeping the single `Write-ToLog.ps1` copy of each.
 
 ## [0.0.2] - 2026-03-24
 
