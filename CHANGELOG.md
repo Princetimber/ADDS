@@ -66,6 +66,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This surfaced only after the fix above, as `Import-Module -Name ModuleBuilder`
   failing with "The required module 'Configuration' is not loaded." during the
   `Build_ModuleOutput_ModuleBuilder` task. Added `Configuration = '[1.3.1,2.0)'`.
+- `.github/workflows/ci.yml`: with the build job now succeeding, the `test`
+  job's `[ubuntu-latest, windows-latest, macos-latest]` matrix ran for the
+  first time and failed on the two non-Windows runners — this module targets
+  Windows Server only, and the test suite intentionally hardcodes Windows
+  paths/`Get-CimInstance` rather than mocking for cross-platform. Restricted
+  the `test` job to `windows-latest` only.
 
 ## [0.0.2] - 2026-03-24
 
